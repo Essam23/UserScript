@@ -2,7 +2,7 @@
 // @name        Amazon Video - subtitle downloader
 // @description Allows you to download subtitles from Amazon Video
 // @license     MIT
-// @version     1.8.6
+// @version     1.8.8
 // @namespace   tithen-firion.github.io
 // @include     /^https:\/\/(www|smile)\.amazon\.com\/(gp\/(video|product)|(.*?\/)?dp)\/.+/
 // @include     /^https:\/\/(www|smile)\.amazon\.de\/(gp\/(video|product)|(.*?\/)?dp)\/.+/
@@ -161,6 +161,7 @@ function downloadInfo(url, downloadVars) {
         }
       });
       title += '.S' + season.toString().padStart(2, '0') + '.E' + ep.toString().padStart(2, '0');
+      title += '.' + epInfo.title;
     }
     title = title.replace(/[:*?"<>|\\\/]+/g, '_').replace(/ /g, '.');
     title += '.WEBRip.Amazon.';
@@ -172,13 +173,6 @@ function downloadInfo(url, downloadVars) {
     });
 
     var subs = (info.subtitleUrls || []).concat(forced);
-    if(subs.length > 1 && !downloadVars) {
-      downloadVars = {
-        subCounter: 0,
-        infoCounter: 1,
-        zip: new JSZip()
-      };
-    }
 
     subs.forEach(function(subInfo) {
       let lang = subInfo.languageCode;
@@ -196,8 +190,7 @@ function downloadInfo(url, downloadVars) {
         lang = newLang;
       }
       languages.add(lang);
-      if(downloadVars)
-        ++downloadVars.subCounter;
+      ++downloadVars.subCounter;
       progressBar.incrementMax();
       downloadSubs(subInfo.url, title + lang + '.srt', downloadVars, lang);
     });
@@ -206,8 +199,10 @@ function downloadInfo(url, downloadVars) {
       console.log(info);
       alert(e);
     }
-    if(downloadVars)
-      --downloadVars.infoCounter;
+    if(--downloadVars.infoCounter === 0 && downloadVars.subCounter === 0) {
+      alert("No subs found, make sure you're logged in and you have access to watch this video!");
+      progressBar.destroy();
+    }
   };
   req.send(null);
 }
@@ -215,7 +210,12 @@ function downloadInfo(url, downloadVars) {
 function downloadThis(e) {
   progressBar.init();
   var id = e.target.getAttribute('data-id');
-  downloadInfo(gUrl + id);
+  var downloadVars = {
+    subCounter: 0,
+    infoCounter: 1,
+    zip: new JSZip()
+  };
+  downloadInfo(gUrl + id, downloadVars);
 }
 function downloadAll(e) {
   progressBar.init();
@@ -266,8 +266,9 @@ function findMovieID() {
     catch(ignore) {
       continue;
     }
-    if(typeof data.initArgs !== 'undefined' && typeof data.initArgs.titleID !== 'undefined')
-      return data.initArgs.titleID;
+    const args = data.initArgs || data.args;
+    if(typeof args !== 'undefined' && typeof args.titleID !== 'undefined')
+      return args.titleID;
   }
   throw Error("Couldn't find movie ID");
 }
