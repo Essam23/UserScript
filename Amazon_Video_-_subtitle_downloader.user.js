@@ -176,6 +176,8 @@ function downloadInfo(url, downloadVars) {
 
     subs.forEach(function(subInfo) {
       let lang = subInfo.languageCode;
+      if(lang.indexOf('ar') !== 0)
+        return;
       if(subInfo.type === 'subtitle' || subInfo.type === 'subtitle') {}
       else if(subInfo.type === 'shd')
         lang += '[cc]';
